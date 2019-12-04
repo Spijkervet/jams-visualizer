@@ -1,5 +1,4 @@
 import React from 'react';
-import io from 'socket.io-client';
 import ableton_logo from './ableton_logo.png';
 
 
@@ -8,78 +7,10 @@ import AudioPad from './components/AudioPad'
 import UsernameForm from './components/UsernameForm';
 import UserList from './components/UserList'
 
-import { Piano, KeyboardShortcuts, MidiNumbers } from 'react-piano';
-import 'react-piano/dist/styles.css';
 
 import './App.css';
 
 
-// for later
-import WebMidi from 'webmidi';
-
-
-
-const socket = io('/test')
-
-
-WebMidi.enable(function (err) {
-  if (err) {
-    console.log("WebMidi could not be enabled.", err);
-  } else {
-    console.log("WebMidi enabled!");
-  }
-
-  for (var input of WebMidi.inputs) {
-    console.log(input.id, input.name)
-    var input = WebMidi.getInputById(input.id);//-549027294);
-    console.log(input)
-    input.addListener('noteon', "all",
-      function (e) {
-        var channel = e.channel
-
-        console.log(e.data)
-
-        socket.emit('midi_event', {
-          raw: [e.data[0], e.data[1], e.data[2]],
-          channel: channel
-        });
-
-        // console.log(e)
-        // console.log("Received 'noteon' message (" + e.note.name + e.note.octave + ").");
-      }
-    );
-
-    input.addListener('noteoff', "all",
-      function (e) {
-        var raw_data = Array.from(e.data)
-        var channel = e.channel
-
-        console.log(raw_data)
-
-        socket.emit('midi_event', { 
-          raw: [e.data[0], e.data[1], e.data[2]],
-          channel: channel
-        });
-
-        // console.log(e)
-        // console.log("Received 'noteon' message (" + e.note.name + e.note.octave + ").");
-      }
-    );
-
-    input.addListener('controlchange', 'all', 
-      function (e) {
-
-        var channel = e.channel
-        socket.emit('midi_event', { 
-          raw: [e.data[0], e.data[1], e.data[2]],
-          channel: channel
-        });
-      
-      })
-
-  }
-  // console.log(WebMidi.outputs);
-});
 
 
 class Toggle extends React.Component {
@@ -93,15 +24,13 @@ class Toggle extends React.Component {
 
   handleClick() {
 
-    switch (this.state.isToggleOn) {
-      case true: {
-        socket.emit('midi_event', { midi: [144, 60, 100]});
-        break
-      }
-      default: {
-        socket.emit('midi_event', { midi: [128, 60, 100]});
-      }
-    }
+    // switch (this.state.isToggleOn) {
+    //   case true: {
+    //     break
+    //   }
+    //   default: {
+    //   }
+    // }
     
     this.setState(state => ({
       isToggleOn: !state.isToggleOn
@@ -156,111 +85,25 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      date: new Date(),
-      socketId: 'none',
-      userName: 'None'
+      simpleData: null
     };
   }
 
-  sendMidiEvent(note_on, pitch, velocity, channel=0) {
-    socket.emit('midi_event', { 
-      raw: [note_on, pitch, velocity],
-      channel: channel
-    });
-  }
-
-  joinMidi = name => {
-    this.setState({
-      userName: name
-    })
-
-    socket.emit('join_midi', { 
-      username: name
-    })
-  }
-
-
-  updateUsers = (user) => {
-    console.log('updating users')
-    console.log(user)
-  }
-
   componentDidMount() {
-    socket.on('connect', function() {
-      console.log('connected')
-    });
-
-    socket.on('on_connect', (data) => {
-
-      console.log('connect data!', data)
-
-      this.setState({
-        socketId: socket.id,
-        uuid: data.user.uuid,
-        userName: data.user.userName
-      })
-      
-      socket.emit('my_event', {data: 'I\'m connected!'});
-    })
-
-    socket.on('user_joined', (data) => {
-      this.updateUsers(data.user);
-    });
+    
+    fetch('/list')
+      .then(response => response.json())
+      .then(data => this.setState({ simpleData: data }));
   }
 
   render() {
 
-    const firstNote = MidiNumbers.fromNote('c2');
-    const lastNote = MidiNumbers.fromNote('c4');
-    const keyboardShortcuts = KeyboardShortcuts.create({
-      firstNote: firstNote,
-      lastNote: lastNote,
-      keyboardConfig: KeyboardShortcuts.HOME_ROW,
-    });
-
     return (
     <div className="App">
       <header className="App-header">
-        <img src={ableton_logo} className="App-logo" alt="logo" />
-        <UsernameForm joinMidi = {this.joinMidi}/>
-        <p>{this.state.userName}</p>
-        <code>UUID: {this.state.uuid}</code>
+        {/* <img src={ableton_logo} className="App-logo" alt="logo" /> */}
+        <p>{this.state.simpleData}</p>
 
-        <div>
-          <UserList getUsers={this.getUsers}/>
-        </div>
-
-         <div>
-          <AudioPad midiEvent={this.sendMidiEvent} keyCode={36} keyUp={false} color={"#d127d1"} volume={0.3}>Kick</AudioPad>
-          <AudioPad midiEvent={this.sendMidiEvent} keyCode={38} keyUp={false} color={"#d127d1"} volume={0.3}>Snare</AudioPad>
-          <AudioPad midiEvent={this.sendMidiEvent} keyCode={42} keyUp={false} color={"#d127d1"} volume={0.3}>Hihat</AudioPad>
-        </div>
-
-        <div>
-          <Piano
-            noteRange={{ first: firstNote, last: lastNote }}
-            playNote={(midiNumber) => {
-              this.sendMidiEvent(144, midiNumber, 127);
-              console.log(midiNumber);
-              // Play a given note - see notes below
-            }}
-            stopNote={(midiNumber) => {
-              // Stop playing a given note - see notes below
-              this.sendMidiEvent(128, midiNumber, 127);
-            }}
-            width={1000}
-            keyboardShortcuts={keyboardShortcuts}
-          />
-        </div>
-        
-        {/* <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a> */}
       </header>
     </div>
     )
