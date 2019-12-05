@@ -1,17 +1,12 @@
 import React from 'react';
-import ableton_logo from './ableton_logo.png';
-
 
 // Audio related components
 import AudioPad from './components/AudioPad'
 import UsernameForm from './components/UsernameForm';
 import UserList from './components/UserList'
-
+import AudioList from './components/AudioList'
 
 import './App.css';
-
-
-
 
 class Toggle extends React.Component {
   constructor(props) {
@@ -85,25 +80,34 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      simpleData: null
+      audioList: []
     };
   }
 
   componentDidMount() {
-    
-    fetch('/list')
-      .then(response => response.json())
-      .then(data => this.setState({ simpleData: data }));
+    fetch('http://localhost:6008/list')
+    .then(response => response.json())
+    .then((data) => {
+      this.setState({ audioList: data })
+      console.log(data)
+    })
   }
 
+
   render() {
+    const items = Object.keys(this.state.audioList).map(num=> {
+      return <AudioList key={num} details={this.state.audioList[num]} />
+    })
 
     return (
     <div className="App">
       <header className="App-header">
-        {/* <img src={ableton_logo} className="App-logo" alt="logo" /> */}
-        <p>{this.state.simpleData}</p>
-
+        <div className='audio-list'>
+          {items}
+        </div>
+        <div className='audio-list'>
+          test
+        </div>
       </header>
     </div>
     )
